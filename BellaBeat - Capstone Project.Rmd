@@ -1,0 +1,188 @@
+---
+title: "BellaBeat - Data Analysis"
+author: "Aidan Wilson"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 76
+---
+
+# BellaBeat - Data Analysis Capstone project
+
+## By Aidan Wilson
+
+Ask Prepare Process Analyze Share Act
+
+### Characters and products
+
+-   Urška Sršen: Bellabeat's cofounder and Chief Creative Officer
+-   Sando Mur: Mathematician and Bellabeat's cofounder; key member of the
+    Bellabeat executive team
+-   Bellabeat marketing analytics team: A team of data analysts responsible
+    for collecting, analyzing, and reporting data that helps guide
+    Bellabeat's marketing strategy. You joined this team six months ago and
+    have been busy learning about Bellabeat''s mission and business goals
+    --- as well as how you, as a junior data analyst, can help Bellabeat
+    achieve them.
+
+### Product
+
+-   Bellabeat app: The Bellabeat app provides users with health data related
+    to their
+
+    -   activity,
+    -   sleep,
+    -   stress,
+    -   menstrual cycle,
+    -   mindfulness habits. This data can help users better understand their
+        current habits and make healthy decisions. The Bellabeat app
+        connects to their line of smart wellness products.
+
+-   Leaf: Bellabeat's classic wellness tracker can be worn as a bracelet,
+    necklace, or clip. The Leaf tracker connects to the Bellabeat app to
+    track activity, sleep, and stress.
+
+-   Time: This wellness watch combines the timeless look of a classic
+    timepiece with smart technology to track user:
+
+    -   activity
+    -   sleep
+    -   stress The Time watch connects to the Bellabeat app to provide you
+        with insights into your daily wellness.
+
+-   Spring: This is a water bottle that tracks daily water intake using
+    smart technology to ensure that you are appropriately hydrated
+    throughout the day. The Spring bottle connects to the Bellabeat app to
+    track your hydration levels.
+
+-   Bellabeat membership: Bellabeat also offers a subscription-based
+    membership program for users. Membership gives users 24/7 access to
+    fully personalized guidance on nutrition, activity, sleep, health and
+    beauty, and mindfulness based on their lifestyle and goals.
+
+# Ask
+
+Sršen asks you to analyze smart device usage data in order to gain insight
+into how consumers use non-Bellabeat smart devices. She then wants you to
+select one Bellabeat product to apply these insights to in your
+presentation. These questions will guide your analysis:
+
+1.  What are some trends in smart device usage?
+2.  How could these trends apply to Bellabeat customers?
+3.  How could these trends help influence Bellabeat marketing strategy?
+
+# Deliverables
+
+1.  A clear summary of the business task
+2.  A description of all data sources used
+3.  Documentation of any cleaning or manipulation of data
+4.  A summary of your analysis
+5.  Supporting visualizations and key findings 6.Your top high-level content
+    recommendations based on your analysis
+
+# Ask Challange:
+
+Clear Statement of the business task: *"BellaBeat would like to see insights
+into their smart devices, with this capstone focusing on one device. The
+data and graphics should help convey their clientels current purchasing and
+living habits and recommend BellaBeats next steps in marketing."*
+
+Key stakeholders:
+
+-   Urška Sršen: Co-founder and CCO
+-   Sando Mur: BellaBeat exuctive team member
+-   Marketing team
+
+----------------------------------------------------------------------------
+
+# Prepare
+
+Look into the fitbit dataset
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(readr)
+library(dplyr)
+library(broom)
+library(psych) 
+library(gt)
+library(glue)
+library(dplyr)
+library(magrittr)
+library(gtExtras)
+library(lubridate)
+library(RColorBrewer)
+
+nb.cols <- 24
+mycolors <- colorRampPalette(brewer.pal(8, "Paired"))(nb.cols)
+
+file_location <- "/Users/aidan/Desktop/Capstone Project - Data Analysis/Fitabase Data 4.12.16-5.12.16/"
+setwd("/Users/aidan/Desktop/Capstone Project - Data Analysis/Fitabase Data 4.12.16-5.12.16/")
+#knitr::opts_knit$set(root.dir = "/Users/aidan/Desktop/Capstone Project - Data Analysis/Fitabase Data 4.12.16-5.12.16/")
+Fit_Bit_File_Names <- list.files("/Users/aidan/Desktop/Capstone Project - Data Analysis/Fitabase Data 4.12.16-5.12.16/")
+
+BellaBeat_Data <- lapply(paste0(file_location,Fit_Bit_File_Names),function(i){
+  read.csv(i, header=TRUE)
+})
+
+#Looking at interesting file names to decide which dataset to work through
+Fit_Bit_File_Names 
+
+#Get an idea of what the data set looks like
+head(BellaBeat_Data[[17]]) %>%
+  gt()
+
+#Get an idea of the sizes
+dim(BellaBeat_Data[[17]])
+
+```
+
+Now that I have looked into the Data sets provided, based on what datasets
+exist. I will choose to use the sleeping patterns data set.
+
+I chose this as it posed the following issues:
+
+-   Dealing with time and dates
+
+-   Showing issues with lack of units being present
+
+Now to clean up the data
+
+```{r}
+
+Sleep_Data <- BellaBeat_Data[[17]] %>%
+  separate(SleepDay, sep = " ", into = c("Date", "Time", "AM or PM"))%>%
+  mutate(TotalHoursAsleep = round(TotalMinutesAsleep/60, digits = 2))
+
+#Now lets mess around with the table to get some information in usable formates. 
+
+# 1) How many hours does each user sleep on average
+Avg_rest_per_User <- Sleep_Data %>%
+  group_by(Id) %>%
+  summarise(mean(TotalHoursAsleep))%>%
+  mutate(Avg_Sleep = round(as.numeric(`mean(TotalHoursAsleep)`),2)) %>%
+  arrange(desc(Avg_Sleep))
+
+# 2) Difference between the Hours alseep and Hours in bed
+Bed_VS_Sleep <- Sleep_Data %>%
+  mutate(Bed_VS_Sleep = round((TotalTimeInBed - TotalMinutesAsleep)/60, digits = 2))
+
+```
+
+Now that we have the data in a better orientation and legible formats we can
+plot some graphs. hhhh
+
+```{r}
+ggplot(Avg_rest_per_User) +
+  geom_bar(aes(x= reorder(as.character(Id), -Avg_Sleep),  y = Avg_Sleep, 
+               fill = factor(as.character(Id))), stat = "identity", show.legend = FALSE)+
+  scale_fill_manual(values = mycolors) +
+  theme(
+    plot.title = element_text("BellaBeat - Average Sleep per Person", size = 16, face = "bold"),
+    axis.title.x = element_text("Individuals - By ID", size = 12, face = "italic"),
+    axis.title.y = element_text("Average Sleep (Hrs)", size = 12, face = "italic"),
+    axis.text.x = element_text(angle = 45, hjust=1)
+    )
+```

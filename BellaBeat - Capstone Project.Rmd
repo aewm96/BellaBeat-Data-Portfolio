@@ -8,6 +8,8 @@ editor_options:
     wrap: 76
 ---
 
+[![](images/index.jpg){width="707"}](https://bellabeat.com/)
+
 # BellaBeat - Data Analysis Capstone project
 
 ## By Aidan Wilson
@@ -100,7 +102,7 @@ Key stakeholders:
 
 Look into the fitbit dataset
 
-```{r}
+```{r Setup Functions, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
 library(tidyverse)
 library(data.table)
 library(readr)
@@ -118,6 +120,10 @@ library(RColorBrewer)
 nb.cols <- 24
 mycolors <- colorRampPalette(brewer.pal(8, "Paired"))(nb.cols)
 
+```
+
+```{r Reading and Loading Data sets, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
 file_location <- "/Users/aidan/Desktop/Capstone Project - Data Analysis/Fitabase Data 4.12.16-5.12.16/"
 setwd("/Users/aidan/Desktop/Capstone Project - Data Analysis/Fitabase Data 4.12.16-5.12.16/")
 #knitr::opts_knit$set(root.dir = "/Users/aidan/Desktop/Capstone Project - Data Analysis/Fitabase Data 4.12.16-5.12.16/")
@@ -128,14 +134,10 @@ BellaBeat_Data <- lapply(paste0(file_location,Fit_Bit_File_Names),function(i){
 })
 
 #Looking at interesting file names to decide which dataset to work through
-Fit_Bit_File_Names 
+knitr::kable(Fit_Bit_File_Names)
 
-#Get an idea of what the data set looks like
-head(BellaBeat_Data[[17]]) %>%
-  gt()
+# knitr::kable(BellaBeat_Data[[1]])
 
-#Get an idea of the sizes
-dim(BellaBeat_Data[[17]])
 
 ```
 
@@ -150,7 +152,7 @@ I chose this as it posed the following issues:
 
 Now to clean up the data
 
-```{r}
+```{r Working through data set, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
 
 Sleep_Data <- BellaBeat_Data[[17]] %>%
   separate(SleepDay, sep = " ", into = c("Date", "Time", "AM or PM"))%>%
@@ -167,22 +169,75 @@ Avg_rest_per_User <- Sleep_Data %>%
 
 # 2) Difference between the Hours alseep and Hours in bed
 Bed_VS_Sleep <- Sleep_Data %>%
-  mutate(Bed_VS_Sleep = round((TotalTimeInBed - TotalMinutesAsleep)/60, digits = 2))
+  mutate(Bed_VS_Sleep = round((TotalTimeInBed - TotalMinutesAsleep)/60, digits = 2)) %>%
+  select(Id, Bed_VS_Sleep)%>%
+  group_by(Id) %>%
+  summarise(Bed_VS_Sleep = mean(Bed_VS_Sleep))
+
+# 3) Lets put the length of sleep and the total time in bed into one table
+Sleep_and_Bed_Time <- Bed_VS_Sleep %>% 
+  full_join(Avg_rest_per_User, by = "Id")%>%
+  select(Id, Bed_VS_Sleep, Avg_Sleep)
+
 
 ```
 
-Now that we have the data in a better orientation and legible formats we can
-plot some graphs. hhhh
+Taking the *"Sleep Data"* into account, I have separated the date and time
+into two different columns and changed the minutes to hours. Luckily, there
+was not much cleaning required for this work.
 
-```{r}
+Now that we have the data in a better orientation and legible formats we can
+plot some graphs.
+
+```{r Plotting Avg sleep, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
 ggplot(Avg_rest_per_User) +
   geom_bar(aes(x= reorder(as.character(Id), -Avg_Sleep),  y = Avg_Sleep, 
                fill = factor(as.character(Id))), stat = "identity", show.legend = FALSE)+
   scale_fill_manual(values = mycolors) +
+  labs(
+    title = "BellaBeat Average\n Rest per User",
+    x = "Personal Number ID",
+    y = "Averaged hours per User (Hrs)"
+  ) +
   theme(
-    plot.title = element_text("BellaBeat - Average Sleep per Person", size = 16, face = "bold"),
-    axis.title.x = element_text("Individuals - By ID", size = 12, face = "italic"),
-    axis.title.y = element_text("Average Sleep (Hrs)", size = 12, face = "italic"),
-    axis.text.x = element_text(angle = 45, hjust=1)
-    )
+    plot.title = element_text(color="Black", size=14, face="bold.italic", hjust = 0.5),
+    axis.title.x = element_text(color="Black", size=12, face="italic"),
+    axis.title.y = element_text(color="Black", size=12, face="italic"),
+    axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 0.1)
+  )
+```
+
+```{r Plotting Bed time VS Sleep Time, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(Bed_VS_Sleep)+
+  geom_bar(aes(y = Bed_VS_Sleep, x = reorder(factor(as.character(Id)), - Bed_VS_Sleep),fill = factor(Id)), stat = "identity",show.legend = FALSE)+
+    scale_fill_manual(values = mycolors) +
+  labs(
+    title = "BellaBeat Sleep\n Time people spend in their bed outside of sleep",
+    x = "Personal Number ID",
+    y = "Averaged hours per User (Hrs)"
+  ) +
+  theme(
+    plot.title = element_text(color="Black", size=14, face="bold.italic", hjust = 0.5),
+    axis.title.x = element_text(color="Black", size=12, face="italic"),
+    axis.title.y = element_text(color="Black", size=12, face="italic"),
+    axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 0.1)
+  )
+```
+
+```{r Avg sleep and AVG time in bed, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(Sleep_and_Bed_Time, aes(x = reorder(factor(as.character(Id)), -Avg_Sleep)))+
+  geom_col(aes(y = Avg_Sleep, fill = factor(Id)),alpha = 0.5, show.legend = FALSE)+
+  geom_point(aes(y = Bed_VS_Sleep, color = factor(Id), size = Bed_VS_Sleep), shape = "triangle", show.legend = FALSE)+
+    scale_fill_manual(values = mycolors) +
+  labs(
+    title = "BellaBeat Sleep\n Avg Sleep with Avg Time in Bed",
+    x = "Personal Number ID",
+    y = "Averaged hours per User (Hrs)"
+  ) +
+  theme(
+    plot.title = element_text(color="Black", size=14, face="bold.italic", hjust = 0.5),
+    axis.title.x = element_text(color="Black", size=12, face="italic"),
+    axis.title.y = element_text(color="Black", size=12, face="italic"),
+    axis.text.x = element_text(angle = 90, vjust = 0.1, hjust = 0.1)
+  )
 ```
